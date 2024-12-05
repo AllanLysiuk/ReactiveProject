@@ -58,6 +58,21 @@ public class RxPublisher<T: Any> {
         return compactMapPublisher
     }
     
+    public func skip(_ n: Int) -> RxPublisher<T> {
+        let skipPublisher = RxPublisher<T>()
+        var count = 0
+        
+        self.subscribe { event in
+            if count >= n {
+                skipPublisher.send(event: event)
+            } else {
+                count += 1
+            }
+        }.store(in: &bag)
+        
+        return skipPublisher
+    }
+    
     public func merge(
         _ publishers: RxPublisher<T>...
     ) -> RxPublisher<T> {
