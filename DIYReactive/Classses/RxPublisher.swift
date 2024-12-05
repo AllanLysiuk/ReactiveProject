@@ -45,16 +45,17 @@ public class RxPublisher<T: Any> {
     }
     
     public func compactMap<MappedType: Any>(
-        _ handler: @escaping (T) -> MappedType
+        _ handler: @escaping (T) -> MappedType?
     ) -> RxPublisher<MappedType> {
-        let mapPublisher = RxPublisher<MappedType>()
+        let compactMapPublisher = RxPublisher<MappedType>()
         
         self.subscribe { event in
-            let mappedValue = handler(event)
-            mapPublisher.send(event: mappedValue)
+            if let mappedValue = handler(event) {
+                compactMapPublisher.send(event: mappedValue)
+            }
         }.store(in: &bag)
         
-        return mapPublisher
+        return compactMapPublisher
     }
     
     public func merge(
