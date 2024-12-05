@@ -1,45 +1,32 @@
 import Foundation
 
-public class RXNotification {
+public final class RxNotificationCenter {
+    private init() {}
     
-    private var publishers: [String: RxPublisher<Any>] = [:]
+    public static let shared: RxNotificationCenter = .init()
     
-    public func subscribeToNotification<T>(
-        name: Notification.Name,
-        object: Any? = nil,
-        type: T.Type,
-        handler: @escaping (T) -> Void
-    ) -> RxReleasable {
-        let publisher = getPublisher(for: name)
-        
-        return publisher.subscribe { event in
-            if let event = event as? T {
-                handler(event)
-            }
-        }
+    private var publisher = RxPublisher<Notification>()
+    private var registeredNames: [Notification.Name] = []
+    
+    public func observe(
+        name: Notification.Name
+    ) -> RxPublisher<Notification> {
+        registerNameIfNeeded(name: name)
+        return publisher
+            .filter { $0.name == name }
     }
     
-    private func getPublisher(for notificationName: Notification.Name) -> RxPublisher<Any> {
-        let nameKey = notificationName.rawValue
-        
-        if let publisher = publishers[nameKey] {
-            return publisher
-        } else {
-            let publisher = RxPublisher<Any>()
-            publishers[nameKey] = publisher
-            NotificationCenter.default.addObserver(
-                forName: notificationName,
-                object: nil,
-                queue: .main) { [weak self] notification in
-                    self?.publish(notification, for: notificationName)
-                }
-            return publisher
-        }
+    @objc private func handle(notification: Notification) {
+        publisher.send(event: notification)
     }
     
-    private func publish(_ notification: Notification, for notificationName: Notification.Name) {
-        if let publisher = publishers[notificationName.rawValue] {
-            publisher.send(event: notification.object as Any)
-        }
+    private func registerNameIfNeeded(name: Notification.Name) {
+        guard !registeredNames.contains(name) else { return }
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handle(notification:)),
+            name: name,
+            object: nil
+        )
     }
 }

@@ -73,6 +73,31 @@ public class RxPublisher<T: Any> {
         return skipPublisher
     }
     
+    public func throttle(_ interval: TimeInterval) -> RxPublisher<T> {
+        let throttlePublisher = RxPublisher<T>()
+        var lastEventTimestamp: Date?
+        
+        self.subscribe { event in
+            let now = Date()
+            
+            if let lastTimestamp = lastEventTimestamp {
+                let timeInterval = now.timeIntervalSince(lastTimestamp)
+                
+                // Если прошло больше или равно interval секунд, отправляем событие
+                if timeInterval >= interval {
+                    throttlePublisher.send(event: event)
+                    lastEventTimestamp = now
+                }
+            } else {
+                // Если это первое событие, отправляем его сразу
+                throttlePublisher.send(event: event)
+                lastEventTimestamp = now
+            }
+        }.store(in: &bag)
+        
+        return throttlePublisher
+    }
+    
     public func merge(
         _ publishers: RxPublisher<T>...
     ) -> RxPublisher<T> {
